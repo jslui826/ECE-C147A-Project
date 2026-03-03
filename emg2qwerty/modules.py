@@ -309,3 +309,61 @@ class LSTMEncoder(nn.Module):
         x = self.proj(x)                    # (T, N, C)
         x = x + inputs                      # residual
         return self.layer_norm(x)
+
+class LSTMEncoder(nn.Module):
+    def __init__(
+        self,
+        num_features: int,
+        hidden_size: int = 384,
+        num_layers: int = 2,
+        bidirectional: bool = True,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__()
+
+        self.lstm = nn.LSTM(
+            input_size = num_features,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=bidirectional,
+        )
+
+        out_dim = hidden_size * (2 if bidirectional else 1)
+        self.proj = nn.Linear(out_dim, num_features)
+        self.layer_norm = nn.LayerNorm(num_features)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        x, _ = self.lstm(inputs)
+        x = self.proj(x)
+        x = x + inputs
+        return self.layer_norm(x)
+
+class GRUEncoder(nn.Module):
+    def __init__(
+        self,
+        num_features: int,
+        hidden_size: int = 384,
+        num_layers: int = 2,
+        bidirectional: bool = True,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__()
+
+        self.gru = nn.GRU(
+            input_size=num_features,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=bidirectional
+        )
+
+        out_dim = hidden_size * (2 if bidirectional else 1)
+        self.proj = nn.Linear(out_dim, num_features)
+        self.layer_norm = nn.LayerNorm(num_features)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        x, _ = self.gru(inputs)
+        x = self.proj(x)
+        x = x + inputs
+        return self.layer_norm(x)

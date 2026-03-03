@@ -26,6 +26,7 @@ from emg2qwerty.modules import (
     SpectrogramNorm,
     TDSConvEncoder,
     LSTMEncoder,
+    GRUEncoder,
 )
 from emg2qwerty.transforms import Transform
 
@@ -146,8 +147,11 @@ class TDSConvCTCModule(pl.LightningModule):
         self,
         in_features: int,
         mlp_features: Sequence[int],
-        block_channels: Sequence[int],
-        kernel_width: int,
+        block_channels: Sequence[int],  # TDSEncoder
+        kernel_width: int,              # TDSEncoder
+        hidden_size: int,               # LSTM/GRUEncoder
+        num_layers: int,                # LSTM/GRUEncoder
+        bidirectional: bool,            # LSTM/GRUEncoder
         optimizer: DictConfig,
         lr_scheduler: DictConfig,
         decoder: DictConfig,
@@ -170,16 +174,28 @@ class TDSConvCTCModule(pl.LightningModule):
             ),
             # (T, N, num_features)
             nn.Flatten(start_dim=2),
+
+            ##### UNCOMMENT ENCODER #####
+            # Hyperparameters can be set in config/model/tds_conv_ctc.yaml
+            # block_channels and kernel_width is for TDSEncoder
+            # hidden_size, num_layers, and bidirectional are LSTM/GRUEncoder
+
             # TDSConvEncoder(
             #     num_features=num_features,
             #     block_channels=block_channels,
             #     kernel_width=kernel_width,
             # ),
-            LSTMEncoder(
-                num_features,
-                hidden_size=384,
-                num_layers=2,
-                bidirectional=True
+            # LSTMEncoder(
+            #     num_features=num_features,
+            #     hidden_size=hidden_size,
+            #     num_layers=num_layers,
+            #     bidirectional=bidirectional,
+            # ),
+            GRUEncoder(
+                num_features=num_features,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                bidirectional=bidirectional,
             ),
             # (T, N, num_classes)
             nn.Linear(num_features, charset().num_classes),
