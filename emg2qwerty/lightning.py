@@ -152,6 +152,9 @@ class TDSConvCTCModule(pl.LightningModule):
         hidden_size: int,               # LSTM/GRUEncoder
         num_layers: int,                # LSTM/GRUEncoder
         bidirectional: bool,            # LSTM/GRUEncoder
+        is_TDS_encoder: bool,
+        is_LSTM_encoder: bool,
+        is_GRU_encoder: bool,
         optimizer: DictConfig,
         lr_scheduler: DictConfig,
         decoder: DictConfig,
@@ -160,6 +163,28 @@ class TDSConvCTCModule(pl.LightningModule):
         self.save_hyperparameters()
 
         num_features = self.NUM_BANDS * mlp_features[-1]
+
+        encoder = None
+        if is_TDS_encoder:
+            encoder = TDSConvEncoder(
+                num_features=num_features,
+                block_channels=block_channels,
+                kernel_width=kernel_width,
+            )
+        elif is_LSTM_encoder:
+            encoder = LSTMEncoder(
+                num_features=num_features,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                bidirectional=bidirectional,
+            )
+        else:
+            encoder = GRUEncoder(
+                num_features=num_features,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                bidirectional=bidirectional,
+            )     
 
         # Model
         # inputs: (T, N, bands=2, electrode_channels=16, freq)
@@ -175,28 +200,11 @@ class TDSConvCTCModule(pl.LightningModule):
             # (T, N, num_features)
             nn.Flatten(start_dim=2),
 
-            ##### UNCOMMENT ENCODER #####
+            ##### ENCODER #####
             # Hyperparameters can be set in config/model/tds_conv_ctc.yaml
             # block_channels and kernel_width is for TDSEncoder
             # hidden_size, num_layers, and bidirectional are LSTM/GRUEncoder
-
-            # TDSConvEncoder(
-            #     num_features=num_features,
-            #     block_channels=block_channels,
-            #     kernel_width=kernel_width,
-            # ),
-            # LSTMEncoder(
-            #     num_features=num_features,
-            #     hidden_size=hidden_size,
-            #     num_layers=num_layers,
-            #     bidirectional=bidirectional,
-            # ),
-            GRUEncoder(
-                num_features=num_features,
-                hidden_size=hidden_size,
-                num_layers=num_layers,
-                bidirectional=bidirectional,
-            ),
+            encoder,
             # (T, N, num_classes)
             nn.Linear(num_features, charset().num_classes),
             nn.LogSoftmax(dim=-1),
