@@ -155,6 +155,21 @@ class TemporalAlignmentJitter:
 
 
 @dataclass
+class Downsample:
+    """Simulates a lower EMG sampling rate by keeping every nth sample.
+    The original sampling rate is 2kHz. A factor of 2 simulates 1kHz, etc.
+
+    Args:
+        factor (int): Keep every nth sample along the time dimension (default: 1)
+    """
+
+    factor: int = 1
+
+    def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor[:: self.factor]
+
+
+@dataclass
 class LogSpectrogram:
     """Creates log10-scaled spectrogram from an EMG signal. In the case of
     multi-channeled signal, the channels are treated independently.
