@@ -11,7 +11,8 @@ module:
   # Set flags for logs
   is_TDS_encoder: False
   is_LSTM_encoder: False
-  is_GRU_encoder: True
+  is_GRU_encoder: False
+  is_GRU_hybrid: True
 
 datamodule:
   _target_: emg2qwerty.lightning.WindowedEMGDataModule
