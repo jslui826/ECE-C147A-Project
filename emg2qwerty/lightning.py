@@ -27,6 +27,7 @@ from emg2qwerty.modules import (
     TDSConvEncoder,
     LSTMEncoder,
     GRUEncoder,
+    GRUHybrid,
 )
 from emg2qwerty.transforms import Transform
 
@@ -155,6 +156,7 @@ class TDSConvCTCModule(pl.LightningModule):
         is_TDS_encoder: bool,
         is_LSTM_encoder: bool,
         is_GRU_encoder: bool,
+        is_GRU_hybrid: bool,
         optimizer: DictConfig,
         lr_scheduler: DictConfig,
         decoder: DictConfig,
@@ -178,13 +180,22 @@ class TDSConvCTCModule(pl.LightningModule):
                 num_layers=num_layers,
                 bidirectional=bidirectional,
             )
-        else:
+        elif is_GRU_encoder:
             encoder = GRUEncoder(
                 num_features=num_features,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 bidirectional=bidirectional,
-            )     
+            )
+        elif is_GRU_hybrid:
+            encoder = GRUHybrid(
+                num_features=num_features,
+                block_channels=block_channels,
+                kernel_width=kernel_width,
+                hidden_size=hidden_size,
+                num_layers=num_layers,
+                bidirectional=bidirectional,
+            )
 
         # Model
         # inputs: (T, N, bands=2, electrode_channels=16, freq)
