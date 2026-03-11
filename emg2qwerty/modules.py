@@ -326,7 +326,7 @@ class GRUEncoder(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=dropout if num_layers > 1 else 0.0,
-            bidirectional=bidirectional
+            bidirectional=bidirectional,
         )
 
         out_dim = hidden_size * (2 if bidirectional else 1)
@@ -338,3 +338,48 @@ class GRUEncoder(nn.Module):
         x = self.proj(x)
         x = x + inputs
         return self.layer_norm(x)
+
+# TDS (CNN) -> GRU
+class GRUHybrid(nn.Module):
+    def __init__(
+        self,
+        num_features: int,
+        block_channels: Sequence[int] = (24, 24, 24, 24),
+        kernel_width: int = 32,
+        hidden_size: int = 384,
+        num_layers: int = 2,
+        bidirectional: bool = True,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__()
+
+        assert len(block_channels) > 0
+        tds_conv_blocks: list[nn.Module] = []
+        for channels in block_channels:
+            assert{
+                num_features % channels == 0
+            }, "block_channels must evenly divide num_features"
+            tds_conv_blocks.extend(
+                [
+                    TDSConv2dBlock(channels, num_features // channels, kernel_width),
+                    TDSFullyConnectedBlock(num_features),
+                ]
+            )
+        self.tds_conv_blocks = nn.Sequential(*tds_conv_blocks)
+        self.gru = nn.GRU(
+            input_size=num_features,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=bidirectional,
+        )
+        out_dim = hidden_size * (2 if bidirectional else 1)
+        self.proj = nn.Linear(out_dim, num_features)
+        self.layer_norm = nn.LayerNorm(num_features)
+    
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        cnn_out = self.tds_conv_blocks(inputs)
+        gru_out, _ = self.gru(cnn_out)
+        gru_out = self.proj(gru_out)
+        gru_out = cnn_out + gru_out
+        return self.layer_norm(gru_out)
