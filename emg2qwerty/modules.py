@@ -8,6 +8,7 @@ from collections.abc import Sequence
 
 import torch
 from torch import nn
+import math
 
 
 class SpectrogramNorm(nn.Module):
@@ -383,3 +384,67 @@ class GRUHybrid(nn.Module):
         gru_out = self.proj(gru_out)
         gru_out = cnn_out + gru_out
         return self.layer_norm(gru_out)
+
+class PositionalEncoding(nn.Module):
+    """Injects positional information into the sequence for the Transformer.
+    Expects inputs of shape (T, N, C).
+    """
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 500000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x shape: (T, N, C)
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+
+class TransformerEncoder(nn.Module):
+    """A Transformer-based encoder designed as a drop-in replacement 
+    for the LSTMEncoder/GRUEncoder.
+    """
+    def __init__(
+        self,
+        num_features: int,
+        d_model: int = 384,
+        nhead: int = 8,
+        num_layers: int = 4,
+        dim_feedforward: int = 1536,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__()
+
+        # Project up/down if num_features doesn't match the Transformer's d_model
+        self.in_proj = nn.Linear(num_features, d_model) if num_features != d_model else nn.Identity()
+        
+        self.pos_encoder = PositionalEncoding(d_model=d_model, dropout=dropout)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation="gelu",
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        # Project back to num_features for the residual connection
+        self.out_proj = nn.Linear(d_model, num_features) if num_features != d_model else nn.Identity()
+        self.layer_norm = nn.LayerNorm(num_features)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        # inputs: (T, N, C)
+        x = self.in_proj(inputs)
+        x = self.pos_encoder(x)
+        x = self.transformer(x)
+        x = self.out_proj(x)
+        
+        x = x + inputs  # residual connection mirroring LSTMEncoder style
+        return self.layer_norm(x)
