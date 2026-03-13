@@ -6,6 +6,8 @@ Our main modifications are in ```modules.py``` and ```lightning.py``` which cont
 implemented (LSTM, GRU, CNN + LSTM, CNN + GRU, and transformer). These can be trained by passing the corresponding
 YAML filename as the argument for ```model=MODEL_NAME``` with the standard emg2qwerty training command.
 
+### Model Selection
+
 An example of training a model with a TDS Encoder followed by a GRU:
 
 ```shell
@@ -16,7 +18,7 @@ python -m emg2qwerty.train \
   --multirun
 ```
 
-## Electrode Channel And Offset
+### Electrode Channel And Offset
 
 This section is for the CNN + TDS frontend + Transformer model used in the
 electrode-channel and offset comparison runs.
@@ -78,6 +80,8 @@ python -m emg2qwerty.train \
 
 Note: `band_rotation.transform.offsets` only changes the training augmentation.
 
+### Sampling Frequency
+
 Similarly, the sampling frequency may be adjusted with the corresponding YAML files under ```config/transforms```
 as the argument for ```transforms=TRANSFORM_TYPE```. This however also requires an adequate modification
 to ```in_features``` to be supplemented.
@@ -89,6 +93,20 @@ python -m emg2qwerty.train \
   transforms="log_spectrogram_1000hz" \
   module.in_features=272 \
   user="single_user" \
+  trainer.accelerator=gpu trainer.devices=1 \
+  --multirun
+```
+
+### Training Data Size
+
+The amount of training data may be adjusted with the corresponding YAML files under ```config/user```
+as the argument for ```user=TRAINING_TYPE```.
+
+An example of training the baseline model but with only 8 sessions worth of training data:
+
+```shell
+python -m emg2qwerty.train \
+  user="single_user_8sessions" \
   trainer.accelerator=gpu trainer.devices=1 \
   --multirun
 ```
