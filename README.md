@@ -16,6 +16,68 @@ python -m emg2qwerty.train \
   --multirun
 ```
 
+## Electrode Channel And Offset
+
+This section is for the CNN + TDS frontend + Transformer model used in the
+electrode-channel and offset comparison runs.
+
+Use this base command shape:
+
+```shell
+python -m emg2qwerty.train \
+  model=cnn_transformer \
+  user=single_user \
+  trainer.accelerator=gpu trainer.devices=1 \
+  module.electrode_channels=CHANNELS \
+  module.in_features=IN_FEATURES
+```
+
+How to choose `IN_FEATURES`:
+
+- `16` channels -> `528`
+- `12` channels -> `396`
+- `8` channels -> `264`
+- `4` channels -> `132`
+- `2` channels -> `66`
+- `1` channel -> `33`
+
+How offsets work:
+
+- Original offset setting: do not add anything. The default is `[-1, 0, 1]`.
+- No offset setting: add `band_rotation.transform.offsets=[0]`.
+
+Commands for this section:
+
+```shell
+# 12 channels with the original offset setting [-1, 0, 1]
+python -m emg2qwerty.train \
+  model=cnn_transformer \
+  user=single_user \
+  trainer.accelerator=gpu trainer.devices=1 \
+  module.electrode_channels=12 \
+  module.in_features=396
+
+# 12 channels with offset 0
+python -m emg2qwerty.train \
+  model=cnn_transformer \
+  user=single_user \
+  trainer.accelerator=gpu trainer.devices=1 \
+  module.electrode_channels=12 \
+  module.in_features=396 \
+  band_rotation.transform.offsets=[0]
+
+# 8 channels with offset 0
+python -m emg2qwerty.train \
+  model=cnn_transformer \
+  user=single_user \
+  trainer.accelerator=gpu trainer.devices=1 \
+  module.electrode_channels=8 \
+  module.in_features=264 \
+  band_rotation.transform.offsets=[0]
+```
+
+Note: `band_rotation.transform.offsets` only changes the training augmentation.
+
 Similarly, the sampling frequency may be adjusted with the corresponding YAML files under ```config/transforms```
 as the argument for ```transforms=TRANSFORM_TYPE```. This however also requires an adequate modification
 to ```in_features``` to be supplemented.

@@ -35,6 +35,20 @@ from emg2qwerty.modules import (
 from emg2qwerty.transforms import Transform
 
 
+def _select_electrode_channels(
+    inputs: torch.Tensor, electrode_channels: int
+) -> torch.Tensor:
+    num_channels = inputs.shape[3]
+    assert num_channels >= electrode_channels
+    if num_channels == electrode_channels:
+        return inputs
+
+    channel_indices = np.floor(
+        np.arange(electrode_channels) * num_channels / electrode_channels
+    ).astype(int).tolist()
+    return inputs[:, :, :, channel_indices, :]
+
+
 class WindowedEMGDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -839,15 +853,17 @@ class CNNTransformerCTCModule(pl.LightningModule):
         decoder: DictConfig,
         tds_blocks: Sequence[int] = (24, 24, 24, 24),
         tds_kernel_width: int = 32,
+        electrode_channels: int = 16,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
+        self.electrode_channels = electrode_channels
 
         # The output dimension from the frontend MLP
         num_features = self.NUM_BANDS * mlp_features[-1]
 
         self.model = nn.Sequential(
-            SpectrogramNorm(channels=self.NUM_BANDS * self.ELECTRODE_CHANNELS),
+            SpectrogramNorm(channels=self.NUM_BANDS * self.electrode_channels),
 
             MultiBandRotationInvariantMLP(
                 in_features=in_features,
@@ -891,7 +907,9 @@ class CNNTransformerCTCModule(pl.LightningModule):
         )
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return self.model(inputs)
+        return self.model(
+            _select_electrode_channels(inputs, self.electrode_channels)
+        )
     
     def _step(
         self, phase: str, batch: dict[str, torch.Tensor], *args, **kwargs
@@ -964,4 +982,3 @@ class CNNTransformerCTCModule(pl.LightningModule):
             optimizer_config=self.hparams.optimizer,
             lr_scheduler_config=self.hparams.lr_scheduler,
         )
-
