@@ -559,6 +559,7 @@ class TDSConvGRURnnCTCModule(pl.LightningModule):
         hidden_size: int,               # LSTM/GRUEncoder
         num_layers: int,                # LSTM/GRUEncoder
         bidirectional: bool,            # LSTM/GRUEncoder
+        dropout: int,                   # LSTM/GRUEncoder
         optimizer: DictConfig,
         lr_scheduler: DictConfig,
         decoder: DictConfig,

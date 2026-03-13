@@ -1,19 +1,35 @@
 # C147/247 Final Project
 ### Winter 2026 
 
-This course project is built upon the emg2qwerty work from Meta. The first section of this README provides some guidance for working with the repo and contains a running list of FAQs. **Note that the rest of the README is from the original repo and we encourage you to take a look at their work.**
+This is our course project, built upon the emg2qwerty work from Meta. We use a single user's dataset for our models.
+Our main modifications are in ```modules.py``` and ```lightning.py``` which contain the different architectures we
+implemented (LSTM, GRU, CNN + LSTM, CNN + GRU, and transformer). These can be trained by passing the corresponding
+YAML filename as the argument for ```model=MODEL_NAME``` with the standard emg2qwerty training command.
 
-## Guiding Tips + FAQs
-_Last updated 2/13/2025_
-- Read through the Project Guidelines to ensure that you have a clear understanding of what we expect
-- Familiarize yourself with the prediction task and get a high-level understanding of their base architecture (it would be beneficial to read about CTC loss)
-- Get comfortable with the codebase
-  - ```lightning.py``` + ```modules.py``` - where most of your model architecture development will take place
-  - ```data.py``` - defines PyTorch dataset (likely will not need to touch this much)
-  - ```transforms.py``` - implement more data transforms and other preprocessing techniques
-  - ```config/*.yaml``` - modify model hyperparameters and PyTorch Lightning training configuration
-    - **Q: How do we update these configuration files?** A: Note the structure of YAML files include basic key-value pairs (i.e. ```<key>: <value>```) and hierarchical structure. So, for instance, if we wanted to update the ```mlp_features``` hyperparameter of the ```TDSConvCTCModule```, we would change the value at line 5 of ```config/model/tds_conv_ctc.yaml``` (under ```module```). _Read more details [here](https://pytorch-lightning.readthedocs.io/en/1.3.8/common/lightning_cli.html)._
-    - **Q: Where do we configure data splitting?** A: Refer to ```config/user/single_user.yaml```. Be careful with your edits, so that you don't accidentally move the test data into your training set.
+An example of training a model with a TDS Encoder followed by a GRU:
+
+```shell
+python -m emg2qwerty.train \
+  model="tds_conv_gru_rnn_ctc" \
+  user="single_user" \
+  trainer.accelerator=gpu trainer.devices=1 \
+  --multirun
+```
+
+Similarly, the sampling frequency may be adjusted with the corresponding YAML files under ```config/transforms```
+as the argument for ```transforms=TRANSFORM_TYPE```. This however also requires an adequate modification
+to ```in_features``` to be supplemented.
+
+An example of training the baseline model but with half the sampling rate (1000 Hz):
+
+```shell
+python -m emg2qwerty.train \
+  transforms="log_spectrogram_1000hz" \
+  module.in_features=272 \
+  user="single_user" \
+  trainer.accelerator=gpu trainer.devices=1 \
+  --multirun
+```
 
 # emg2qwerty
 [ [`Paper`](https://arxiv.org/abs/2410.20081) ] [ [`Dataset`](https://fb-ctrl-oss.s3.amazonaws.com/emg2qwerty/emg2qwerty-data-2021-08.tar.gz) ] [ [`Blog`](https://ai.meta.com/blog/open-sourcing-surface-electromyography-datasets-neurips-2024/) ] [ [`BibTeX`](#citing-emg2qwerty) ]
